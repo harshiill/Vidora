@@ -11,7 +11,7 @@
         api_secret: process.env.CLOUDINARY_API_SECRET // Click 'View API Keys' above to copy your API secret
    } )
     
-   const uloadOnCloudinary= async (localFilePath) => {
+   const uploadOnCloudinary= async (localFilePath) => {
     try {
         if(!localFilePath) {
             throw new Error('No file path provided');
@@ -29,4 +29,4 @@
     }
    }
 
-   export { uloadOnCloudinary };
+   export { uploadOnCloudinary };

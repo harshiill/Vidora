@@ -18,10 +18,11 @@ import fs from 'fs';
             resource_type: 'auto',
         })
         //file uploaded successfully
-        console.log('File uploaded successfully',response.url);
+        // console.log('File uploaded successfully',response.url);
+        fs.unlinkSync(localFilePath)
         return response;
     } catch (error) {
-        fs.unlinkSync(LocalFilePath) //remove the locally saved tempary file as the upoad operation failed
+        fs.unlinkSync(localFilePath) //remove the locally saved tempary file as the upoad operation failed
         return null;
     }
    }

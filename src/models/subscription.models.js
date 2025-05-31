@@ -6,12 +6,12 @@ const subscriptionSchema = new mongooseSchema({
         default:0
     }
 ,
-    channel:[{type:mongoose.Schema.Types.ObjectId,
+    channel:{type:mongoose.Schema.Types.ObjectId,
         ref:"User",
         required:true
     }
-],
-ch
+
+
         
 },{timestamps:true});
 

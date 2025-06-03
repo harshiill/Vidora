@@ -27,4 +27,13 @@ import fs from 'fs';
     }
    }
 
-   export { uploadOnCloudinary };
+   const DeleteFromCloudinary = async(PublicId) => {
+await cloudinary.uploader
+  .destroy(PublicId,{
+    resource_type: "image",
+    
+  })
+  .then(result => console.log(result));
+   }
+
+   export { uploadOnCloudinary,DeleteFromCloudinary };

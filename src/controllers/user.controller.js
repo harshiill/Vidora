@@ -6,6 +6,8 @@ import { ApiResponse } from '../utils/ApiResponse.js';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import mongooseAggregatePaginate from 'mongoose-aggregate-paginate-v2';
+ import {v2 as cloudinary} from 'cloudinary';
+
 
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -146,7 +148,7 @@ return res.status(200)
 
 const logoutUser= asyncHandler(async (req,res) => {
    
-   await User.findByIdAndUpdate(req.user._id,{$set:{refreshToken:undefined}},{new:true,runValidators:true})
+   await User.findByIdAndUpdate(req.user._id,{$unset:{refreshToken:1}},{new:true,runValidators:true})
 
    const options={
     httpOnly:true,
@@ -167,7 +169,7 @@ return res.status(200)
 )
 
 const refreshAccessToken=asyncHandler(async(req,res) => {
-   const incomingRefreshToken=req.cookies.requestToken || req.body.requestToken || req.header("authorization")?.split(' ')[1];
+   const incomingRefreshToken=req.cookies.refreshToken || req.body.refreshToken || req.header("authorization")?.split(' ')[1];
 
    if(!incomingRefreshToken) {
     throw new ApiError(401, 'Unathotized Request');
@@ -201,20 +203,19 @@ const refreshAccessToken=asyncHandler(async(req,res) => {
 })
 
 const changeCurrentUserPassword=asyncHandler(async(req,res)=> {
-    const {oldPassowrd,newPassword,confPassword}= req.body;
+    const {oldPassword,newPassword,confPassword}= req.body;
 
-    if(!oldPassowrd || !newPassword || !confPassword) {
+    if(!oldPassword || !newPassword || !confPassword) {
         throw new ApiError(400, 'All fields are required');
     }
     if(newPassword !== confPassword) {
         throw new ApiError(400, 'New password and confirm password do not match');
     }
 
-    const user=req?.user;
+    const user = await User.findById(req.user?._id)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
-    const passwordMatch=await user.findById(user._id).isPasswordCorrect(oldPassowrd);
-
-    if(!passwordMatch) {
+    if(!isPasswordCorrect) {
         throw new ApiError(401, 'Old password is incorrect');
     }
 
@@ -309,16 +310,16 @@ const updateCoverImage=asyncHandler(async(req,res)=>{
 const getUserChannelProfile= asyncHandler(async(req,res)=>{
 const {username} = req.params;
 
-if(!username.trim())
+if(!username?.trim())
 {
     throw new ApiError(400, 'Username is required');
 }
 
     const channel=await User.aggregate([
         {
-            $match: {username: username.toLowerCase()}
+            $match: {username: username?.toLowerCase()}
         },{
-            lookup:{
+            $lookup:{
                 from:"subscriptions",
                 localField:"_id",
                 foreignField:"channel",
@@ -327,7 +328,7 @@ if(!username.trim())
             }
         },
         {
-            lookup:{
+            $lookup:{
                 from:"subscriptions",
                 localField:"_id",
                 foreignField:"subscriber",
@@ -374,50 +375,56 @@ if(!username.trim())
     return res.status(200).json(new ApiResponse(200, channel[0], "Channel profile fetched successfully"));
 })
 
-const getWatchHistory = asyncHandler(async(req,res) => {
-    const user = await User.aggregate([
-        {
-            $match:{
-                _id: new mongoose.Types.ObjectId(req.user._id)
-            }
-        },{
-            lookup:{
-                from: 'videos',
-                localField: 'watchHistory',
-                foreignField: '_id',
-                as: "watchHistory",
-                pipeline:
-                [
-                    {
-                        $lookup:{
-                            from: 'users',
-                            localField: 'owner',
-                            foreignField: '_id',
-                            as: 'owner',
-                            pipeline: [
-                                {
-                                    $project: {
-                                        
-                                        fullname: 1,
-                                        username: 1,
-                                        avatar: 1
-                                    }
-                                }
-                            ]
-                        }
-                    },{
-                        $addFields: {
-                            $owner:{
-                                $first: '$owner'
-                            }
-                        }
-                    }
-                ]
-            }
-        }
-    ])
-    return res.status(200).json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully"));
-})
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
+    },
+    {
+      $lookup: {
+        from: 'videos',
+        localField: 'watchHistory',
+        foreignField: '_id',
+        as: 'watchHistory',
+        pipeline: [
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'owner',
+              foreignField: '_id',
+              as: 'owner',
+              pipeline: [
+                {
+                  $project: {
+                    fullname: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $addFields: {
+              owner: { $first: '$owner' }, // 💡 Also fixed this: key should be 'owner', not '$owner'
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  if (!user.length) {
+    return res.status(404).json(new ApiResponse(404, null, 'User not found'));
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user[0].watchHistory, 'Watch history fetched successfully'));
+});
+
 export { 
     registerUser ,
     loginUser,

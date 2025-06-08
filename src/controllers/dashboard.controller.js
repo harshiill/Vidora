@@ -6,15 +6,11 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 
-const getChannelStats = asyncHandler(async(req,res) => {
-
-        const userId = req.user?._id;
-
-
-    if(!mongoose.isValidObjectId(userId)) {
-        throw new ApiError(400, "Invalid channel ID")
-    }
-    const totalSubscribers = await Subscription.aggregate([
+const getChannelStats = asyncHandler(async (req, res) => {
+    // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
+        const userId = req.user._id;
+        
+       const totalSubscribers = await Subscription.aggregate([
         {
             $match:{
                 channel: new mongoose.Types.ObjectId(userId)
@@ -23,137 +19,114 @@ const getChannelStats = asyncHandler(async(req,res) => {
         {
             $group:{
                 _id:null,
-                totalSubscribers: { $sum: 1 }
+                totalSubscribers: {$sum: 1}
             }
         }
-    ])
+       ])
 
-    const totalSubscriptions = await Subscription.aggregate([
+       const totalSubscriptions = await Subscription.aggregate([
         {
             $match:{
                 subscriber: new mongoose.Types.ObjectId(userId)
-                }
+            }
         },
         {
             $group:{
                 _id:null,
-                totalSubscriptions: { $sum: 1 }
-                }
-        }
-    ])
-        
-    const totalViews = await Video.aggrgate([
-        {
-          $match:{
-            owner: new mongoose.Types.ObjectId(userId)
-        }  
-        },
-        {
-            $lookup:{
-                from:"likes",
-                localField: "_id",
-                ForeignField: "video",
-                as: "likes"
-            }
-        },
-        {
-            $project: {
-                totalLikes: {
-                    $size: "$likes"
-                },
-                totalViews: "$views",
-            }
-        },
-        {
-            $group:
-            {
-                _id: null,
-                totalViews: { $sum: "$views" },
-                totalLikes: { $sum: "$totalLikes" },
-                totalVideos: { $sum: 1 }
-                
-
-                
+                totalSubscriptions: {$sum: 1}
             }
         }
-        
-    ])
+       ])
 
-    return res.status(200).json(
-        new ApiResponse(200, "Channel stats fetched successfully", {
-            totalSubscribers: totalSubscribers[0]?.totalSubscribers || 0,
-            totalSubscriptions: totalSubscriptions[0]?.totalSubscriptions || 0,
-            totalViews: totalViews[0]?.totalViews || 0,
-            totalLikes: totalViews[0]?.totalLikes || 0,
-            totalVideos: totalViews[0]?.totalVideos || 0
-        })
-    )
-})
-
-const getChannelVideos = asyncHandler(async(req,res) => {
-    const userId = req.user._id
-    if(!mongoose.isValidObjectId(userId)) {
-        throw new ApiError(400, "Invalid channel ID")
-    }
-    
-    const Videos = await Video.aggregate([
-        {
-        $match:{
-            owner: new mongoose.Types.ObjectId(userId)
-        }
+       const videoStats = await Video.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
     },
-        {
-            $lookup:{
-                from:"likes",
-                localField: "_id",
-                foreignField: "video",
-                as: "likes"
-            }
-        },
-        {
-            addFields:{
-                likesCount:{
-                    $size: "$likes"
-                }
-            }
-        },{
-            $sort: {
-                createdAt: -1
-            }
-        },{
-            $project: {
-                _id: 1,
-                videoFile: 1,
-                thumbnail: 1,
-                
-                title: 1,
-                description: 1,
-                createdAt: {
-                    year: 1,
-                    month: 1,
-                    day: 1
-                },
-                isPublished: 1,
-                likesCount: 1
-            }
-        }
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        likesCount: { $size: "$likes" },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalVideos: { $sum: 1 },
+        totalLikes: { $sum: "$likesCount" },
+        totalViews: { $sum: "$views" },
+      },
+    },
+  ]);
 
+  const stats = {
+    totalSubscribers,
+    totalSubscriptions,
+    totalVideos: videoStats[0]?.totalVideos || 0,
+    totalLikes: videoStats[0]?.totalLikes || 0,
+    totalViews: videoStats[0]?.totalViews || 0,
+  };
 
-])
-
-return res
+  return res
     .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            videos,
-            "channel stats fetched successfully"
-        )
-    )
+    .json(new ApiResponse(200, stats, "Channel stats fetched successfully"));
+});
 
-})
+const getChannelVideos = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const videos = await Video.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        likesCount: { $size: "$likes" },
+      },
+    },
+    {
+      $sort: {
+        createdAt: -1,
+      },
+    },
+    {
+      $project: {
+        videoFile: 1,
+        thumbnail: 1,
+        title: 1,
+        description: 1,
+        createdAt: 1,
+        isPublished: 1,
+        likesCount: 1,
+      },
+    },
+  ]);
+
+  return res.status(200).json(
+    new ApiResponse(200, videos, "Channel videos fetched successfully")
+  );
+});
+
 
 export {
-    getChannelStats,
+    getChannelStats, 
     getChannelVideos
-}
+    }

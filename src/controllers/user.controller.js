@@ -1,7 +1,7 @@
 import asyncHandler from './../utils/asyncHandler.js';
 import ApiError from '../utils/APIErros.js';
 import { User } from '../models/user.models.js';
-import { DeleteFromCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js';
+import { DeleteOnCloudinary, uploadOnCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
@@ -76,7 +76,10 @@ if(!avatar) {
 
 const user=await User.create({
     fullname,
-    avatar:avatar.url,
+    avatar:{
+        public_id: avatar.public_id,
+        url: avatar.url
+    },
     coverImage: coverImage ? coverImage.url : null,
     username:username.toLowerCase(),
     email,
@@ -252,14 +255,13 @@ return res.status(200).json(new ApiResponse(200, user, "User details updated suc
 const updateUserAvatar=asyncHandler(async(req,res)=>{
     
     const oldAvatar=req.user?.avatar;    
-    if(oldAvatar)
-    {
-        // Delete the old avatar from Cloudinary
-        const publicId = oldAvatar.split('/')[oldAvatar.split('/').length - 1].split('.')[0];
-        const result=await cloudinary.uploader.destroy(oldAvatar.split('/').pop().split('.')[0]);
+    const oldAvatarPublicId = oldAvatar.public_id || oldAvatar.split('/')[oldAvatar.split('/').length - 1].split('.')[0];
 
-        
+    if(oldAvatar) {
+        // Delete the old avatar from Cloudinary
+        await DeleteOnCloudinary(oldAvatarPublicId);
     }
+        
 
     const AvatarLocalPath=req.file?.path
 
@@ -274,7 +276,10 @@ const updateUserAvatar=asyncHandler(async(req,res)=>{
         throw new ApiError(500, 'Failed to upload avatar image');
     }
 
-    const user=await User.findByIdAndUpdate(req.user?._id,{$set:{avatar:avatar.url}},{new:true,runValidators:true}).select('-password -refreshToken')
+    const user=await User.findByIdAndUpdate(req.user?._id,{$set:{avatar:{
+        public_id: avatar.public_id,
+        url: avatar.url
+    }}},{new:true,runValidators:true}).select('-password -refreshToken')
 
     return res.status(200).json(new ApiResponse(200, user, "Avatar updated successfully"));
 
@@ -285,9 +290,7 @@ const updateCoverImage=asyncHandler(async(req,res)=>{
     const oldCover=req.user?.coverImage;    
     if(oldCover)
     {
-        // Delete the old avatar from Cloudinary
-        const publicId = oldCover.split('/')[oldCover.split('/').length - 1].split('.')[0];
-        const result=await cloudinary.uploader.destroy(oldCover.split('/').pop().split('.')[0]);
+        DeleteOnCloudinary(oldCover.public_id)
 
         
     }
@@ -302,7 +305,12 @@ const updateCoverImage=asyncHandler(async(req,res)=>{
         throw new ApiError(500, 'Failed to upload cover image');
     }
 
-    const user=await User.findByIdAndUpdate(req.user?._id,{$set:{coverImage:coverImage.url}},{new:true,runValidators:true}).select('-password -refreshToken')
+    const user=await User.findByIdAndUpdate(req.user?._id,{$set:{coverImage:
+        {
+            public_id: coverImage.public_id,
+            url: coverImage.url
+        }
+    }},{new:true,runValidators:true}).select('-password -refreshToken')
 
     return res.status(200).json(new ApiResponse(200, user, "Cover image updated successfully"));
 })
@@ -356,8 +364,8 @@ if(!username?.trim())
                 $project:{
                     fullname:1,
                     username:1,
-                    avatar:1,
-                    coverImage:1,
+                    "avatar.url":1,
+                    "coverImage.url":1,
                     subscriberCount:1,
                     channelsSubscribedToCount:1,
                     isSubscribed:1
@@ -400,7 +408,7 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                   $project: {
                     fullname: 1,
                     username: 1,
-                    avatar: 1,
+                    "avatar.url": 1,
                   },
                 },
               ],

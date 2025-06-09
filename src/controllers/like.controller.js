@@ -123,12 +123,13 @@ const userId = req.user._id;
 });
 
 const getLikedVideos = asyncHandler(async (req, res) => {
-  //TODO: get all liked videos
-const userId = req.user._id;
-  const LikedVideos = await Like.aggregate([
+  const userId = req.user._id;
+
+  const likedVideos = await Like.aggregate([
     {
       $match: {
         likedBy: new mongoose.Types.ObjectId(userId),
+        video: { $ne: null },
       },
     },
     {
@@ -136,7 +137,7 @@ const userId = req.user._id;
         from: "videos",
         localField: "video",
         foreignField: "_id",
-        as: "videoDetails",
+        as: "likedVideo",
         pipeline: [
           {
             $lookup: {
@@ -146,53 +147,44 @@ const userId = req.user._id;
               as: "ownerDetails",
             },
           },
-          {
-            $unwind: "$ownerDetails",
-          },
+          { $unwind: "$ownerDetails" },
         ],
       },
     },
+    { $unwind: "$likedVideo" },
     {
-        $unwind: "$ownerDetails",
+      $project: {
+        _id: 0,
+        likedVideo: {
+          _id: "$likedVideo._id",
+          videoFile: "$likedVideo.videoFile.url",
+          thumbnail: "$likedVideo.thumbnail.url",
+          owner: "$likedVideo.owner",
+          title: "$likedVideo.title",
+          description: "$likedVideo.description",
+          views: "$likedVideo.views",
+          duration: "$likedVideo.duration",
+          createdAt: "$likedVideo.createdAt",
+          isPublished: "$likedVideo.isPublished",
+          ownerDetails: {
+            username: "$likedVideo.ownerDetails.username",
+            fullName: "$likedVideo.ownerDetails.fullName",
+            avatar: "$likedVideo.ownerDetails.avatar.url",
+          },
+        },
+      },
     },
     {
-        $sort: {
-            createdAt: -1
-        }
+      $sort: {
+        "likedVideo.createdAt": -1,
+      },
     },
-    {
-        $project:{
-            _id: 0,
-                likedVideo: {
-                    _id: 1,
-                    videoFile: 1,
-                    thumbnail: 1,
-                    owner: 1,
-                    title: 1,
-                    description: 1,
-                    views: 1,
-                    duration: 1,
-                    createdAt: 1,
-                    isPublished: 1,
-                    ownerDetails: {
-                        username: 1,
-                        fullName: 1,
-                        avatar: 1,
-                    },
-                },
-        }
-    }
   ]);
 
-   return res
-        .status(200)
-        .json(
-            new ApiResponse(
-                200,
-                LikedVideos,
-                "liked videos fetched successfully"
-            )
-        );
+  return res
+    .status(200)
+    .json(new ApiResponse(200, likedVideos, "Liked videos fetched successfully"));
 });
+
 
 export { toggleCommentLike, toggleTweetLike, toggleVideoLike, getLikedVideos };

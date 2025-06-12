@@ -213,7 +213,7 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
   }
 
   playlist.videos.push(videoId);
-  const updatedPlaylist = await playlist.save();
+  const updatedPlaylist = await playlist.save({validateBeforeSave: false});
   if (!updatedPlaylist) {
     throw new ApiError(500, "Failed to add video to playlist");
   }
@@ -337,7 +337,7 @@ const updatePlaylist = asyncHandler(async (req, res) => {
   playlist.name = name;
   playlist.description = description;
 
-  const updatedPlaylist = await playlist.save();
+  const updatedPlaylist = await playlist.save({validateBeforeSave: false});
   if (!updatedPlaylist) {
     throw new ApiError(500, "Failed to update playlist");
   }

@@ -133,7 +133,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     }
 
     tweet.content = content;
-    const updatedTweet = await tweet.save();
+    const updatedTweet = await tweet.save({validateBeforeSave: false});
     if (!updatedTweet) {
         throw new ApiError(500, "Failed to update tweet");
     }

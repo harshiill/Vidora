@@ -35,6 +35,7 @@ import playlistRouter from './routes/playlist.routes.js';
 import subscriptionRouter from './routes/subscription.routes.js';
 import dashboardRouter from './routes/dashboard.routes.js';
 import healthcheckRouter from './routes/healthcheck.routes.js';
+import errorHandler from './middlewares/error.middleware.js';
 
 //routes declaration
 
@@ -50,5 +51,5 @@ app.use('/api/v1/healthcheck', healthcheckRouter);
 
 //http://localhost:8000/api/v1/users/register
 //http://localhost:8000/api/v1/users/login
-
+app.use(errorHandler);
 export default app;

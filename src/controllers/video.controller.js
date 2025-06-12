@@ -352,7 +352,7 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     }
 
         video.isPublished = !video.isPublished
-        const updatedVideo = await video.save()
+        const updatedVideo = await video.save({validateBeforeSave: false})
         if (!updatedVideo) {
                 throw new ApiError(500, "Failed to update video publish status")
                 }

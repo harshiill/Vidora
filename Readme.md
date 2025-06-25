@@ -63,7 +63,10 @@ Create a `.env` file in the root directory:
 ```env
 PORT=5000
 MONGO_URI=your_mongodb_atlas_connection_string
-JWT_SECRET=your_jwt_secret
+ACCESS_TOKEN_SECRET=your_jwt_secret
+ACCESS_TOKEN_EXPIRY=your_jwt_expiry
+REFRESH_TOKEN_SECRET=your_jwt_secret
+REFRESH_TOKEN_SECRET=your_jwt_expiry
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
 CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret

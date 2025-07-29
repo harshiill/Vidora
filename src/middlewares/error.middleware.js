@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
-
-import {ApiError} from '../utils/api-error.js';
+import ApiError from '../utils/APIErros.js';
 
 const errorHandler = (err, req, res, next) => {
     let error =err
@@ -21,4 +20,4 @@ const response = {
 return res.status(error.statusCode).json(response);
 }
 
-export {errorHandler}
+export default {errorHandler}

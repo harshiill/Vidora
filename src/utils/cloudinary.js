@@ -35,6 +35,8 @@ import fs from 'fs';
         const result = await cloudinary.uploader.destroy(public_id, {
             resource_type: `${resource_type}`
         });
+
+        
     } catch (error) {
         return error;
         console.log("delete on cloudinary failed", error);
